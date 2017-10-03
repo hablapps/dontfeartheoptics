@@ -25,7 +25,7 @@ trait CandyState { this: CandyUtils =>
     matrix: Map[Pos, Option[Candy]])
 
   object Level {
-    val MINIMAL = 200
+    val MINIMAL = 2000
     val INCREMENT = 10
     val MOVES = 30
 
@@ -113,13 +113,19 @@ trait CandyState { this: CandyUtils =>
   }
 
   object RegularCandy {
+    implicit class RegularCandyAux(candy: RegularCandy) {
+      def stripe(dir: Dir): StripedCandy = dir match {
+        case Up   | Down  => VerStriped(candy)
+        case Left | Right => HorStriped(candy)
+      }
+    }
     def fromInt(i: Int): RegularCandy = (i % 6).abs match {
       case 0 => Red
       case 1 => Orange
       case 2 => Yellow
       case 3 => Green
-      case 4 => Blue
-      case 5 => Purple
+      case 4 => Green // Blue
+      case 5 => Yellow // Purple
     }
   }
 
