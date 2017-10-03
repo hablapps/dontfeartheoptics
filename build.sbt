@@ -4,7 +4,7 @@ scalaVersion := "2.12.3"
 
 organization := "org.hablapps"
 
-resolvers += "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots"
+// resolvers += "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots"
 
 val scalazVersion = "7.2.15"
 

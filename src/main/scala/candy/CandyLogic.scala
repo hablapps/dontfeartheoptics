@@ -1,7 +1,8 @@
 package org.hablapps.candy
 
+import Function.const
 import scalaz._, Scalaz._
-import monocle.{ Lens, Traversal }
+import monocle.{ Lens, Optional, Traversal, ITraversal }
 import monocle.state.all._
 
 trait CandyLogic { this: CandyOptics with CandyState with CandyUtils =>
@@ -10,136 +11,142 @@ trait CandyLogic { this: CandyOptics with CandyState with CandyUtils =>
     for {
       ok <- (isIdle |@| nonZeroUps)(_ && _)
       _  <- loadCurrent.whenM(ok)
-      _  <- setPlaying.whenM(ok)
+      _  <- populate
     } yield ok
 
   def leave: State[Game, Boolean] =
     for {
       ok <- isPlaying
       _  <- modifyUps(_ - 1).whenM(ok)
-      _  <- setIdle.whenM(ok)
+      _  <- unloadCurrent.whenM(ok)
     } yield ok
 
   def switch(from: Pos, dir: Dir): State[Game, SwitchOut] =
-    isPlaying.ifM(
-      for {
-        _   <- swap(from, dir)
-        vld <- (isBombInvolved(from, dir) |@| nonStabilized)(_ || _)
-        _   <- bombHandling(from, dir)
-        _   <- isSpecial.ifM_(specialCrush(from, dir))
-        _   <- if (vld) newMove >> stabilize else undo(from, dir)
-        win <- checkWinningCondition
-        _   <- unlockNextLevel.whenM(win)
-        los <- checkLosingCondition
-        _   <- modifyUps(_ - 1).whenM(!win && los)
-        _   <- setIdle.whenM(win || los)
-        ok = if (win) YouWin
-             else if (los) YouLose
-             else if (vld) Ok
-             else InvalidMove
-      } yield ok,
-      (NotPlaying: SwitchOut).pure[State[Game, ?]])
-
-  private def bombHandling(from: Pos, dir: Dir): State[Game, Unit] =
     for {
-      oc1 <- candyLn(from).extract
-      oc2 <- candyLn(from.move(dir)).extract
-      _    <- ((oc1 |@| oc2) {
-        case (ColourBomb, ColourBomb) => crushAll
-        case (ColourBomb, c: RegularCandy) =>
-          crushPos(from) >> crushKind(c)
-        case (c: RegularCandy, ColourBomb) =>
-          crushPos(from.move(dir)) >> crushKind(c)
-        case (ColourBomb, sc: StripedCandy) =>
-          for {
-            _ <- crushPos(from)
-            _ <- stripeKind(sc.kind, dirToStripe(dir))
-            _ <- crushKind(sc.kind)
-          } yield ()
-        case (sc: StripedCandy, ColourBomb) =>
-          for {
-            _ <- crushPos(from.move(dir))
-            _ <- stripeKind(sc.kind, dirToStripe(dir))
-            _ <- crushKind(sc.kind)
-          } yield ()
-        case _ => ().point[State[Game, ?]]
-      }).getOrElse(().point[State[Game, ?]])
-    } yield ()
+      _  <- swap(from, dir)
+      vld <- nonStabilized // vld <- (isBombInvolved(from, dir) |@| nonStabilized)(_ || _)
+      // _   <- bombHandling(from, dir)
+      // _   <- isSpecial.ifM_(specialCrush(from, dir))
+      _   <- if (vld) newMove >> stabilize else undo(from, dir)
+      ec <- exitCondition
+      // XXX: great inference job, Scala! </ironic>
+      ok <- ec.fold((if (vld) Ok else InvalidMove: SwitchOut).point[State[Game, ?]]) { st =>
+        unloadCurrent >>
+          (if (st) unlockNextLevel >> (YouWin: SwitchOut).point[State[Game, ?]]
+           else modifyUps(_ - 1) >> (YouLose: SwitchOut).point[State[Game, ?]])
+      }
+    } yield ok
 
-  private def isSpecial: State[Game, Boolean] =
-    for {
-      h <- heightLn.extract
-      w <- widthLn.extract
-      b <- gets(inarowTr(4)(h, w).length).map(_ > 0)
-    } yield b
-
-  // TODO: this is pretty ugly, refactor it!
-  private def specialGen(
-      min: Int,
-      from: Pos,
-      dir: Dir,
-      f: Candy => Candy): State[Game, Unit] =
-    for {
-      h  <- heightLn.extract
-      w  <- widthLn.extract
-      c1 <- candyLn(from).extract
-      c2 <- candyLn(from.move(dir)).extract
-      cs <- gets(inarowTr(min)(h, w).getAll).map(_.map(_._1))
-      _  <- crushMin(min) >>= score
-      _  <- candyLn(from).assign(c1.map(f)).whenM(cs contains from)
-      _  <- candyLn(from.move(dir)).assign(c2.map(f))
-              .whenM(cs contains from.move(dir))
-    } yield ()
-
-  // TODO: move to state `morph(dir)`
-  private def dirToStripe(dir: Dir): RegularCandy => StripedCandy =
-    dir match {
-      case Up | Down => VerStriped
-      case Left | Right => HorStriped
-    }
-
-  private def specialCrush(from: Pos, dir: Dir): State[Game, Unit] =
-    for {
-      _ <- specialGen(5, from, dir, _ => ColourBomb)
-      _ <- specialGen(4, from, dir, _.morph(dirToStripe(dir)))
-    } yield ()
+  // private def bombHandling(from: Pos, dir: Dir): State[Game, Unit] =
+  //   for {
+  //     oc1 <- candyLn(from).extract
+  //     oc2 <- candyLn(from.move(dir)).extract
+  //     _    <- ((oc1 |@| oc2) {
+  //       case (ColourBomb, ColourBomb) => crushAll
+  //       case (ColourBomb, c: RegularCandy) =>
+  //         crushPos(from) >> crushKind(c)
+  //       case (c: RegularCandy, ColourBomb) =>
+  //         crushPos(from.move(dir)) >> crushKind(c)
+  //       case (ColourBomb, sc: StripedCandy) =>
+  //         for {
+  //           _ <- crushPos(from)
+  //           _ <- stripeKind(sc.kind, dirToStripe(dir))
+  //           _ <- crushKind(sc.kind)
+  //         } yield ()
+  //       case (sc: StripedCandy, ColourBomb) =>
+  //         for {
+  //           _ <- crushPos(from.move(dir))
+  //           _ <- stripeKind(sc.kind, dirToStripe(dir))
+  //           _ <- crushKind(sc.kind)
+  //         } yield ()
+  //       case _ => ().point[State[Game, ?]]
+  //     }).getOrElse(().point[State[Game, ?]])
+  //   } yield ()
+  //
+  // private def isSpecial: State[Game, Boolean] =
+  //   for {
+  //     h <- heightLn.extract
+  //     w <- widthLn.extract
+  //     b <- gets(inarowTr(4)(h, w).length).map(_ > 0)
+  //   } yield b
+  //
+  // // TODO: this is pretty ugly, refactor it!
+  // private def specialGen(
+  //     min: Int,
+  //     from: Pos,
+  //     dir: Dir,
+  //     f: Candy => Candy): State[Game, Unit] =
+  //   for {
+  //     h  <- heightLn.extract
+  //     w  <- widthLn.extract
+  //     c1 <- candyLn(from).extract
+  //     c2 <- candyLn(from.move(dir)).extract
+  //     cs <- gets(inarowTr(min)(h, w).getAll).map(_.map(_._1))
+  //     _  <- crushMin(min) >>= score
+  //     _  <- candyLn(from).assign(c1.map(f)).whenM(cs contains from)
+  //     _  <- candyLn(from.move(dir)).assign(c2.map(f))
+  //             .whenM(cs contains from.move(dir))
+  //   } yield ()
+  //
+  // // TODO: move to state `morph(dir)`
+  // private def dirToStripe(dir: Dir): RegularCandy => StripedCandy =
+  //   dir match {
+  //     case Up | Down => VerStriped
+  //     case Left | Right => HorStriped
+  //   }
+  //
+  // private def specialCrush(from: Pos, dir: Dir): State[Game, Unit] =
+  //   for {
+  //     _ <- specialGen(5, from, dir, _ => ColourBomb)
+  //     _ <- specialGen(4, from, dir, _.morph(dirToStripe(dir)))
+  //   } yield ()
 
   private def newMove: State[Game, Unit] =
-    currentMovesLn.mod_(_ + 1)
+    currentMovesOp.mod_(_ + 1)
 
   private def unlockNextLevel: State[Game, Unit] =
-    Game.last.mod_(_ + 1)
+    Game.current.mod_(_ + 1)
 
-  private def checkWinningCondition: State[Game, Boolean] =
-    (gets(currentScoreLn.get) |@| gets(targetScoreLn.get))(_ >= _)
+  private def winCondition: State[Game, Option[Boolean]] =
+    for {
+      cs <- currentScoreOp.extract
+      ts <- targetScoreOp.extract
+    } yield (cs |@| ts)(_ >= _)
 
-  private def checkLosingCondition: State[Game, Boolean] =
-    (gets(currentMovesLn.get) |@| gets(targetMovesLn.get))(_ >= _)
+  private def loseCondition: State[Game, Option[Boolean]] =
+    for {
+      cm <- currentMovesOp.extract
+      tm <- targetMovesOp.extract
+    } yield (cm |@| tm)(_ >= _)
+
+  private def exitCondition: State[Game, Option[Boolean]] =
+    (winCondition |@| loseCondition) {
+      case (Some(true), _) => true.some
+      case (_, Some(true)) => false.some
+      case _ => None
+    }
 
   private def modifyUps(f: Int => Int): State[Game, Unit] =
     Game.ups.mod_(f)
 
-  private def setIdle: State[Game, Unit] =
-    Game.idle.assign_(true)
-
-  private def setPlaying: State[Game, Unit] =
-    Game.idle.assign_(false)
-
   private def isIdle: State[Game, Boolean] =
-    Game.idle.extract
+    gets(levelOp.isEmpty)
 
   private def isPlaying: State[Game, Boolean] =
     isIdle.map(!_)
 
   private def nonZeroUps: State[Game, Boolean] =
-    Game.ups.extract.map(_ > 0)
+    Game.ups.extracts(_ > 0)
 
   private def loadCurrent: State[Game, Unit] =
     for {
-      _ <- gets(Game.last.get) <*> gets(Game.levels.get)
+      n <- Game.current.extract
+      _ <- Game.level.assign(Level(n).some)
       _ <- stabilize
-      _ <- currentScoreLn.assign(0)
     } yield ()
+
+  private def unloadCurrent: State[Game, Unit] =
+    Game.level.assign_(None)
 
   private def stabilize: State[Game, Unit] =
     for {
@@ -149,28 +156,27 @@ trait CandyLogic { this: CandyOptics with CandyState with CandyUtils =>
       _ <- nonStabilized.ifM_(stabilize)
     } yield ()
 
-  private def isBombInvolved(from: Pos, dir: Dir): State[Game, Boolean] =
-    for {
-      oc1 <- candyLn(from).extract
-      oc2 <- candyLn(from.move(dir)).extract
-      res = (oc1 |@| oc2) {
-        case (ColourBomb, _) | (_, ColourBomb) => true
-        case _ => false
-      }
-    } yield res.getOrElse(false)
+  // private def isBombInvolved(from: Pos, dir: Dir): State[Game, Boolean] =
+  //   for {
+  //     oc1 <- candyLn(from).extract
+  //     oc2 <- candyLn(from.move(dir)).extract
+  //     res = (oc1 |@| oc2) {
+  //       case (ColourBomb, _) | (_, ColourBomb) => true
+  //       case _ => false
+  //     }
+  //   } yield res.getOrElse(false)
 
   private def nonStabilized: State[Game, Boolean] =
     for {
-      h <- heightLn.extract
-      w <- widthLn.extract
-      c <- gets(inarowTr(3)(h, w).length)
-    } yield c > 0
+      tr <- inARowTrSt(3)
+      b  <- gets(tr.nonEmpty)
+    } yield b
 
   private def swap(from: Pos, dir: Dir): State[Game, Unit] =
     for {
-      mx <- matrixLn.extract
-      _  <- candyLn(from).assign(mx.get(from.move(dir)))
-      _  <- candyLn(from.move(dir)).assign(mx.get(from))
+      c1 <- candyOp(from.move(dir)).extract
+      c2 <- candyOp(from).assigno(c1.join)
+      _  <- candyOp(from.move(dir)).assign(c2.join)
     } yield ()
 
   private def undo(from: Pos, dir: Dir): State[Game, Unit] =
@@ -178,76 +184,106 @@ trait CandyLogic { this: CandyOptics with CandyState with CandyUtils =>
 
   private def gravity: State[Game, Unit] =
     for {
-      h <- heightLn.extract
-      w <- widthLn.extract
-      _ <- modify(gravityTr(h, w).modify(kv => (kv._1.down, kv._2)))
-             .whileM_(gets(gravityTr(h, w).length(_) > 0))
+      tr <- gravityTrSt
+      ps <- gets(tr.getAll).map(_.map(_._1))
+      _  <- ps.traverse_[State[Game, ?]](swap(_, Down))
+      _  <- if (ps.length > 0) gravity else ().point[State[Game, ?]]
     } yield ()
 
-  private def generateCandy: State[Game, RegularCandy] =
-    for {
-      r <- rngLn.extract
-      (i, r2) = r.nextInt
-      _ <- rngLn.assign(r2)
-    } yield RegularCandy.fromInt(i)
+  private def generateCandy: State[Game, Option[RegularCandy]] =
+    rngOp.modo(_.nextInt._2).map(_.map(r => RegularCandy.fromInt(r.nextInt._1)))
 
-  private def generateCandy(n: Int): State[Game, List[RegularCandy]] =
-    iterateN[State[Game, ?], RegularCandy](generateCandy, n)
-
+  // TODO: add `indices` in `ITraversal` interface
   private def populate: State[Game, Unit] =
     for {
-      mx <- matrixLn.extract
-      h  <- heightLn.extract
-      w  <- widthLn.extract
-      gaps = cartesian(h, w).map(k => Pos(k._1, k._2)).filter(! mx.isDefinedAt(_))
-      xs <- generateCandy(gaps.size).map(_.zip(gaps))
-      _  <- xs.traverse_[State[Game, ?]](x => modify(candyLn(x._2).set(x._1.some)))
+      tr <- gapTrSt
+      ps <- gets(tr.getAll).map(_.map(_._1))
+      _  <- ps.traverse_[State[Game, ?]] { p =>
+              generateCandy >>= (oc => candyOp(p).assign_(Option(oc)))
+            }
     } yield ()
 
+  // TODO: `ITraversal` syntax to avoid `modify`
   private def stripeKind(
       kind: RegularCandy,
       f: RegularCandy => StripedCandy): State[Game, Unit] =
     for {
-      h <- heightLn.extract
-      w <- widthLn.extract
-      _ <- modify(kindTr(kind)(h, w).modify(kv => (kv._1, kv._2.map(_.morph(f)))))
+      tr <- kindTrSt(kind)
+      _  <- modify(tr.modify(_ => _ map (_ morph f)))
     } yield ()
 
   private def score(crushed: Int): State[Game, Unit] =
-    currentScoreLn.mod_(_ + (crushed * 20))
+    currentScoreOp.mod_(_ + (crushed * 5))
 
   private def crushPos(pos: Pos): State[Game, Int] =
     for {
-      oc <- candyLn(pos).extract
-      _  <- candyLn(pos).assign(None)
-      ln <- oc match {
+      oc <- candyOp(pos).extract
+      _ = println("Crushing: " + oc + " @ " + pos)
+      n  <- oc.join.join match {
         case Some(HorStriped(_)) => crushLine(pos.i)
         case Some(VerStriped(_)) => crushColumn(pos.j)
-        case _ => 1.point[State[Game, ?]]
+        case Some(_) => candyOp(pos).assign(Option(None)) >> 1.point[State[Game, ?]]
+        case _ => 0.point[State[Game, ?]]
       }
-    } yield ln
+    } yield n
 
-  private def crushWith(
-      f: (Int, Int) => Traversal[Game, (Pos, Option[Candy])]): State[Game, Int] =
+  // TODO: I'd need `ITraversal` syntax to avoid `gets`.
+  //
+  // TODO: We're not using the updating capabilities, so an `IFold` should be
+  // powerful enough.
+  private def crushWith(tr: ITraversal[Pos, Game, Option[Candy]]): State[Game, Int] =
     for {
-      h  <- heightLn.extract
-      w  <- widthLn.extract
-      ps <- gets(f(h, w).getAll)
+      ps <- gets(tr.getAll)
       xs <- ps.map(_._1).traverse[State[Game, ?], Int](crushPos)
     } yield xs.sum
 
+  // TODO: `foldMap` syntax for state module? => replacing `gets`
   private def crushKind(kind: RegularCandy): State[Game, Int] =
-    crushWith(kindTr(kind))
+    for {
+      tr <- kindTrSt(kind)
+      n  <- crushWith(tr)
+    } yield n
 
   private def crushLine(i: Int): State[Game, Int] =
-    crushWith(lineTr(i))
+    crushWith(lineITr(i))
 
   private def crushColumn(j: Int): State[Game, Int] =
-    crushWith(columnTr(j))
+    crushWith(columnITr(j))
 
   private def crushMin(n: Int): State[Game, Int] =
-    crushWith(inarowTr(n))
+    inARowTrSt(n) >>= crushWith
 
   private def crushAll: State[Game, Int] =
-    crushWith(allTr)
+    crushWith(matrixITr)
+
+  /* state-based optics */
+
+  private def kindTrSt(kind: RegularCandy): State[Game, ITraversal[Pos, Game, Option[Candy]]] =
+    gets(matrixITr.foldMap { i => oc =>
+      oc.fold[List[Pos]](List.empty) { c =>
+        if (c.shareKind(kind)) List(i) else List.empty
+      }
+    }).map(ps => posRangeITr(ps: _*))
+
+  private def inARowTrSt(n: Int): State[Game, ITraversal[Pos, Game, Option[Candy]]] =
+    matrixOp.extracts[List[Pos]] { mx =>
+      mx.filter { case (p, oc) =>
+        def check(f: Pos => Pos): Int =
+          iterateWhile(p)(f, pos => oc.fold(false)(c => mx.get(pos).join.fold(false)(_.shareKind(c)))).size
+        (check(_.left) + check(_.right) > n) || (check(_.up) + check(_.down) > n)
+      }.keys.toList
+    }.map(_.fold(posRangeITr())(posRangeITr(_: _*)))
+
+  private def gapTrSt: State[Game, ITraversal[Pos, Game, Option[Candy]]] =
+    gets(matrixITr.foldMap { i => oc =>
+      oc.fold[List[Pos]](List(i))(const(List.empty))
+    }).map(posRangeITr(_: _*))
+
+  private def gravityTrSt: State[Game, ITraversal[Pos, Game, Option[Candy]]] =
+    matrixOp.extracts[List[Pos]] { mx =>
+      mx.filter {
+        case (p, Some(_)) => mx.get(p.down) == Option(None)
+        case _ => false
+      }.keys.toList
+    }.map(_.fold(posRangeITr())(posRangeITr(_: _*)))
 }

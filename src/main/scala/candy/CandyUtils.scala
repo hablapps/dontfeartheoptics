@@ -62,6 +62,7 @@ trait CandyUtils { this: CandyState =>
 
   import monocle.function.At, At._
 
+  // TODO: this is completely wrong!
   def multiAtFilterCtx[I: Order, A](
       is: I*)(
       p: Map[I, A] => (I, Option[A]) => Boolean): Traversal[Map[I, A], (I, Option[A])] =

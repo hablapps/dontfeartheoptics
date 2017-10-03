@@ -8,10 +8,8 @@ trait CandyState { this: CandyUtils =>
   @Lenses case class Game(
     user: String,
     ups: Int,
-    levels: Int => Level,
-    current: Level,
-    idle: Boolean = true,
-    last: Int = 0)
+    level: Option[Level] = Option.empty[Level],
+    current: Int = 0)
 
   @Lenses case class Level(
     targetScore: Long,
@@ -24,7 +22,29 @@ trait CandyState { this: CandyUtils =>
     height: Int,
     width: Int,
     rng: RNG,
-    matrix: Map[Pos, Candy])
+    matrix: Map[Pos, Option[Candy]])
+
+  object Level {
+    val MINIMAL = 200
+    val INCREMENT = 10
+    val MOVES = 30
+
+    def apply(level: Int): Level =
+      Level(MINIMAL + INCREMENT * level, MOVES, Board())
+  }
+
+  object Board {
+    val HEIGHT = 5
+    val WIDTH = 8
+
+    def apply(height: Int = HEIGHT, width: Int = WIDTH): Board = Board(
+      HEIGHT,
+      WIDTH,
+      RNG.simple(0),
+      allPos(height, width).foldRight[Map[Pos, Option[Candy]]](Map.empty) { (p, m) =>
+        m + (p -> None)
+      })
+  }
 
   sealed trait Candy
   sealed trait KindedCandy extends Candy
@@ -116,10 +136,10 @@ trait CandyState { this: CandyUtils =>
       case Left => Pos(i, j - 1)
       case Right => Pos(i, j + 1)
     }
-    def down: Pos = move(Down)
-    def up: Pos = move(Up)
-    def left: Pos = move(Left)
-    def right: Pos = move(Right)
+    lazy val down: Pos = move(Down)
+    lazy val up: Pos = move(Up)
+    lazy val left: Pos = move(Left)
+    lazy val right: Pos = move(Right)
   }
 
   object Pos {
