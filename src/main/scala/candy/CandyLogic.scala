@@ -53,7 +53,7 @@ object CandyLogic {
       ps <- gets(tr.indices)
       c1 <- candyOp(from).extract
       c2 <- candyOp(from.move(dir)).extract
-      _  <- crushMin(min) >>= score
+      _  <- crushMin(min)
       fun = Functor[Option].compose[Option].compose[Option] // hate this!
       _  <- candyOp(from).assign(fun.map(c1)(f).join).whenM(ps contains from)
       _  <- candyOp(from.move(dir)).assign(fun.map(c2)(f).join)
@@ -125,7 +125,7 @@ object CandyLogic {
 
   private def stabilize: State[Game, Unit] =
     for {
-      _ <- crushMin(3) >>= score
+      _ <- crushMin(3)
       _ <- gravity
       _ <- populate
       _ <- nonStabilized.ifM_(stabilize)
@@ -189,9 +189,6 @@ object CandyLogic {
       f: RegularCandy => StripedCandy): State[Game, Unit] =
     kindTrSt(kind) >>= (_.mod_(_ => _ map (_ morph f)))
 
-  private def score(crushed: Int): State[Game, Unit] =
-    currentScoreOp.mod_(_ + (crushed * 5))
-
   private def bombHandling(from: Pos, dir: Dir): State[Game, Unit] =
     for {
       oc1 <- candyOp(from).extract
@@ -219,22 +216,27 @@ object CandyLogic {
       }).getOrElse(().point[State[Game, ?]])
     } yield ()
 
-  private def crushPos(pos: Pos): State[Game, Int] =
-    for {
-      oc <- candyOp(pos).extract
-      n  <- oc.join.join match {
-        case Some(HorStriped(_)) => candyOp(pos).assign(Option(None)) >> crushLine(pos.i)
-        case Some(VerStriped(_)) => candyOp(pos).assign(Option(None)) >> crushColumn(pos.j)
-        case Some(_) => candyOp(pos).assign(Option(None)) >> 1.point[State[Game, ?]]
-        case _ => 0.point[State[Game, ?]]
-      }
-    } yield n
-
   private def crushWith(tr: ITraversal[Pos, Game, Option[Candy]]): State[Game, Int] =
     for {
-      ps <- gets(tr.indices)
-      xs <- ps.traverse[State[Game, ?], Int](crushPos)
-    } yield xs.sum
+      ps <- gets(tr.foldMap(p => {
+        case Some(HorStriped(_)) => List((Left, p.i))
+        case Some(VerStriped(_)) => List((Up, p.j))
+        case _ => List.empty
+      }))
+      _ <- ps.traverse {
+        case (Up, i) => crushLine(i)
+        case (Down, j) => crushColumn(j)
+        case _ => 0.point[State[Game, ?]]
+      }
+      _ <- tr.mod(_ => _ => None)
+      n <- gets(tr.length) >>! score
+    } yield n
+
+  private def score(crushed: Int): State[Game, Unit] =
+    currentScoreOp.mod_(_ + (crushed * 5))
+
+  private def crushPos(pos: Pos): State[Game, Int] =
+    crushWith(posRangeITr(pos))
 
   private def crushKind(kind: RegularCandy): State[Game, Int] =
     kindTrSt(kind) >>= crushWith
