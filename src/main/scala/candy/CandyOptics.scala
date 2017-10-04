@@ -7,7 +7,9 @@ import monocle.function.IEach._
 import monocle.std.map._
 import monocle.std.option._
 
-trait CandyOptics { this: CandyState with CandyUtils =>
+import CandyUtils._
+
+object CandyOptics {
 
   def levelOp: Optional[Game, Level] =
     Game.level ^<-? some

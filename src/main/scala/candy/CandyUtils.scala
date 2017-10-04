@@ -3,10 +3,7 @@ package org.hablapps.candy
 import scalaz._, Scalaz._
 import monocle._
 
-trait CandyUtils { this: CandyState =>
-
-  def allPos(h: Int, w: Int): List[Pos] =
-    cartesian(h, w).map(ia => Pos(ia._1, ia._2))
+object CandyUtils {
 
   /* scala */
 
@@ -45,7 +42,6 @@ trait CandyUtils { this: CandyState =>
 
   /* scalaz */
 
-  // XXX: inference problems when generalizing to `M[_]`
   implicit class IfMHelper(mb: State[Game, Boolean]) {
     def ifM_(mu: State[Game, Unit]): State[Game, Unit] =
       mb.ifM(mu, ().point[State[Game, ?]])
@@ -54,30 +50,4 @@ trait CandyUtils { this: CandyState =>
   // XXX: not in scalaz?
   def iterateWhile[A](a: A)(f: A => A, p: A => Boolean): List[A] =
     if (p(a)) a :: iterateWhile(f(a))(f, p) else Nil
-
-  /* monocle */
-
-  import monocle.function.At, At._
-
-  // TODO: this is completely wrong!
-  def multiAtFilterCtx[I: Order, A](
-      is: I*)(
-      p: Map[I, A] => (I, Option[A]) => Boolean): Traversal[Map[I, A], (I, Option[A])] =
-    new Traversal[Map[I, A], (I, Option[A])] {
-      def modifyF[F[_]: Applicative](
-          f: ((I, Option[A])) => F[(I, Option[A])])(
-          s: Map[I, A]): F[Map[I, A]] =
-        is.toList.foldLeft[F[Map[I, A]]](Map.empty.pure[F]) { (acc, i) =>
-          val fv = if (p(s)(i, s.get(i))) f((i, s.get(i))) else (i, s.get(i)).pure[F]
-          (acc |@| fv) {
-            case (s2, (i2, Some(a2))) => s2 + (i2 -> a2)
-            case (s2, _) => s2
-          }
-        }
-    }
-
-  def multiAtFilter[I: Order, A](
-      is: I*)(
-      p: (I, Option[A]) => Boolean): Traversal[Map[I, A], (I, Option[A])] =
-    multiAtFilterCtx[I, A](is: _*)(_ => (i, oa) => p(i, oa))
 }

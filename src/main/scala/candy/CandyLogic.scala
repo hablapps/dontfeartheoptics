@@ -1,11 +1,17 @@
 package org.hablapps.candy
 
 import Function.const
+
 import scalaz._, Scalaz._
+
 import monocle.{ Lens, Optional, Traversal, ITraversal }
 import monocle.state.all._
 
-trait CandyLogic { this: CandyOptics with CandyState with CandyUtils =>
+import CandyOptics._
+import CandyUtils._
+import RegularCandy.IntAux
+
+object CandyLogic {
 
   def play: State[Game, Boolean] =
     for {

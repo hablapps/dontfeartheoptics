@@ -5,10 +5,11 @@ import scala.util.Random
 
 import scalaz._, Scalaz._
 
-object CandyConsole extends App {
+import CandyLogic._
+import CandyOptics._
+import CandyUtils._
 
-  val system = new CandyCrush
-  import system._
+object CandyConsole extends App {
 
   val switchPat =
     """switch\s+\(\s*([0-9]+)\s*,\s*([0-9]+)\s*\)\s+(up|down|left|right)""".r
