@@ -4,7 +4,7 @@ scalaVersion := "2.12.3"
 
 organization := "org.hablapps"
 
-resolvers += "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots"
+// resolvers += "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots"
 
 val scalazVersion = "7.2.15"
 
@@ -32,6 +32,7 @@ scalacOptions ++= Seq(
   "-unchecked",
   "-deprecation",
   "-feature",
+  "-Ypartial-unification",
   "-language:implicitConversions",
   "-language:postfixOps",
   "-language:higherKinds")
