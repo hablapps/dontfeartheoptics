@@ -12,7 +12,7 @@ import CandyUtils._
 object CandyConsole extends App {
 
   val switchPat =
-    """switch\s+\(\s*([0-9]+)\s*,\s*([0-9]+)\s*\)\s+(up|down|left|right)""".r
+    """\s*\(\s*([0-9]+)\s*,\s*([0-9]+)\s*\)\s+(up|down|left|right)""".r
 
   var game: Game = Game("jesus", 2)
 
