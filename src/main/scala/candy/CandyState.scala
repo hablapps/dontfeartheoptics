@@ -119,13 +119,16 @@ trait CandyState { this: CandyUtils =>
         case Left | Right => HorStriped(candy)
       }
     }
-    def fromInt(i: Int): RegularCandy = (i % 6).abs match {
+  }
+
+  implicit class IntAux(i: Int) {
+    def toRegularCandy: RegularCandy = (i % 6).abs match {
       case 0 => Red
       case 1 => Orange
       case 2 => Yellow
       case 3 => Green
-      case 4 => Green // Blue
-      case 5 => Yellow // Purple
+      case 4 => Blue
+      case 5 => Purple
     }
   }
 

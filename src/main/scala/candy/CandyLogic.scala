@@ -10,15 +10,13 @@ trait CandyLogic { this: CandyOptics with CandyState with CandyUtils =>
   def play: State[Game, Boolean] =
     for {
       ok <- (isIdle |@| nonZeroUps)(_ && _)
-      _  <- loadCurrent.whenM(ok)
-      _  <- populate
+      _  <- (loadCurrent >> populate).whenM(ok)
     } yield ok
 
   def leave: State[Game, Boolean] =
     for {
       ok <- isPlaying
-      _  <- modifyUps(_ - 1).whenM(ok)
-      _  <- unloadCurrent.whenM(ok)
+      _  <- (modifyUps(_ - 1) >> unloadCurrent).whenM(ok)
     } yield ok
 
   def switch(from: Pos, dir: Dir): State[Game, SwitchOut] =
@@ -46,11 +44,11 @@ trait CandyLogic { this: CandyOptics with CandyState with CandyUtils =>
       dir: Dir, f: Candy => Candy): State[Game, Unit] =
     for {
       tr <- inARowTrSt(min)
-      ps <- gets(tr.getAll).map(_.map(_._1))
+      ps <- gets(tr.indices)
       c1 <- candyOp(from).extract
       c2 <- candyOp(from.move(dir)).extract
       _  <- crushMin(min) >>= score
-      fun = Functor[Option].compose[Option].compose[Option]
+      fun = Functor[Option].compose[Option].compose[Option] // hate this!
       _  <- candyOp(from).assign(fun.map(c1)(f).join).whenM(ps contains from)
       _  <- candyOp(from.move(dir)).assign(fun.map(c2)(f).join)
               .whenM(ps contains from.move(dir))
@@ -146,32 +144,44 @@ trait CandyLogic { this: CandyOptics with CandyState with CandyUtils =>
   private def gravity: State[Game, Unit] =
     for {
       tr <- gravityTrSt
-      ps <- gets(tr.getAll).map(_.map(_._1))
+      ps <- gets(tr.indices)
       _  <- ps.traverse_[State[Game, ?]](swap(_, Down))
       _  <- if (ps.length > 0) gravity else ().point[State[Game, ?]]
     } yield ()
 
-  private def generateCandy: State[Game, Option[RegularCandy]] =
-    rngOp.modo(_.nextInt._2).map(_.map(r => RegularCandy.fromInt(r.nextInt._1)))
+  private def generateCandy: State[Game, Option[Candy]] =
+    rngOp.modo(_.nextInt._2).map(_.map(r => r.nextInt._1.toRegularCandy))
 
-  // TODO: add `indices` in `ITraversal` interface
+  // private def populate: State[Game, Unit] =
+  //   for {
+  //     tr <- gapTrSt
+  //     ps <- gets(tr.indices)
+  //     _  <- ps.traverse_[State[Game, ?]] { p =>
+  //             generateCandy >>= (oc => candyOp(p).assign_(Option(oc)))
+  //           }
+  //   } yield ()
+
+  // import monocle.Indexable.Indexed
+  //
+  // private def populate: State[Game, Unit] =
+  //   for {
+  //     tr <- gapTrSt
+  //     g  <- gets(tr.modifyF[State[Game, ?], ? => ?](const(generateCandy))).join
+  //     _  <- put(g)
+  //   } yield ()
+
   private def populate: State[Game, Unit] =
     for {
       tr <- gapTrSt
-      ps <- gets(tr.getAll).map(_.map(_._1))
-      _  <- ps.traverse_[State[Game, ?]] { p =>
-              generateCandy >>= (oc => candyOp(p).assign_(Option(oc)))
-            }
+      ps <- gets(tr.indices)
+      m  <- ps.traverse[State[Game, ?], (Pos, Option[Candy])](generateCandy.strengthL).map(_.toMap)
+      _  <- tr.mod(p => const(m.get(p).join))
     } yield ()
 
-  // TODO: `ITraversal` syntax to avoid `modify`
   private def stripeKind(
       kind: RegularCandy,
       f: RegularCandy => StripedCandy): State[Game, Unit] =
-    for {
-      tr <- kindTrSt(kind)
-      _  <- modify(tr.modify(_ => _ map (_ morph f)))
-    } yield ()
+    kindTrSt(kind) >>= (_.mod_(_ => _ map (_ morph f)))
 
   private def score(crushed: Int): State[Game, Unit] =
     currentScoreOp.mod_(_ + (crushed * 5))
@@ -214,22 +224,14 @@ trait CandyLogic { this: CandyOptics with CandyState with CandyUtils =>
       }
     } yield n
 
-  // TODO: I'd need `ITraversal` syntax to avoid `gets`.
-  //
-  // TODO: We're not using the updating capabilities, so an `IFold` should be
-  // powerful enough.
   private def crushWith(tr: ITraversal[Pos, Game, Option[Candy]]): State[Game, Int] =
     for {
-      ps <- gets(tr.getAll)
-      xs <- ps.map(_._1).traverse[State[Game, ?], Int](crushPos)
+      ps <- gets(tr.indices)
+      xs <- ps.traverse[State[Game, ?], Int](crushPos)
     } yield xs.sum
 
-  // TODO: `foldMap` syntax for state module? => replacing `gets`
   private def crushKind(kind: RegularCandy): State[Game, Int] =
-    for {
-      tr <- kindTrSt(kind)
-      n  <- crushWith(tr)
-    } yield n
+    kindTrSt(kind) >>= crushWith
 
   private def crushLine(i: Int): State[Game, Int] =
     crushWith(lineITr(i))

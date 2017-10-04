@@ -55,9 +55,6 @@ trait CandyUtils { this: CandyState =>
   def iterateWhile[A](a: A)(f: A => A, p: A => Boolean): List[A] =
     if (p(a)) a :: iterateWhile(f(a))(f, p) else Nil
 
-  def iterateN[M[_]: Monad, A](m: M[A], n: Int): M[List[A]] =
-    if (n > 0) m >>= (a => iterateN(m, n-1).map(a :: _)) else List.empty.point[M]
-
   /* monocle */
 
   import monocle.function.At, At._

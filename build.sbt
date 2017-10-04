@@ -32,6 +32,7 @@ scalacOptions ++= Seq(
   "-unchecked",
   "-deprecation",
   "-feature",
+  "-Ypartial-unification",
   "-language:implicitConversions",
   "-language:postfixOps",
   "-language:higherKinds")
