@@ -2,6 +2,7 @@ package org.hablapps.candy
 
 import scalaz._, Scalaz._
 
+import monocle.Lens
 import monocle.macros.Lenses
 
 import CandyUtils._
@@ -24,6 +25,51 @@ import CandyUtils._
   width: Int,
   rng: RNG,
   matrix: Map[Pos, Option[Candy]])
+
+// Alien 1: Nested Class Headcrab
+object Alien1 {
+
+  // Given a level: get/modify its current score & matrix
+
+  /* 1.1: Explore the area and locate the alien */
+
+  def getScore(lv: Level): Long =
+    lv.currentScore
+
+  def modifyScore(f: Long => Long)(lv: Level): Level =
+    lv.copy(currentScore = f(lv.currentScore)) // meh
+
+  def getMatrix(lv: Level): CandyMatrix =
+    lv.board.matrix
+
+  def modifyMatrix(f: CandyMatrix => CandyMatrix)(lv: Level): Level =
+    lv.copy(board = lv.board.copy(matrix = f(lv.board.matrix))) // ugly
+
+  /* 1.2: Equip new weapons and defeat the alien */
+
+  val _currentScore: Lens[Level, Long] =
+    Lens[Level, Long](_.currentScore)(cs => _.copy(currentScore = cs))
+
+  val _board: Lens[Level, Board] =
+    Lens[Level, Board](_.board)(b => _.copy(board = b))
+
+  val _matrix: Lens[Board, CandyMatrix] =
+    Lens[Board, CandyMatrix](_.matrix)(mx => _.copy(matrix = mx))
+
+  import Level._, Board._
+
+  def getScore2: Level => Long =
+    currentScore.get
+
+  def modifyScore2(f: Long => Long): Level => Level =
+    currentScore.modify(f)
+
+  def getMatrix2: Level => CandyMatrix =
+    (board composeLens matrix).get
+
+  def modifyMatrix2(f: CandyMatrix => CandyMatrix): Level => Level =
+    (board composeLens matrix).modify(f)
+}
 
 object Level {
   val MINIMAL = 2000

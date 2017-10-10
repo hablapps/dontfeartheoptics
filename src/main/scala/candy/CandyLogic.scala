@@ -13,6 +13,95 @@ import RegularCandy.IntAux
 
 object CandyLogic {
 
+  // Alien 2: Threading State Zombie
+  object Alien2 {
+
+    import Level._, Board._
+
+    // Crush a particular candy in the matrix, increase the score and return the
+    // resulting value.
+
+    /* 2.1: Explore the area and locate the alien */
+
+    def crushPos(pos: Pos)(lv: Level): (Level, Long) = {
+      val lv2 = (board composeLens matrix).modify(_.updated(pos, None))(lv)
+      val lv3 = currentScore.modify(_ + 5)(lv)
+      (lv3, currentScore.get(lv3))
+    }
+
+    /* 2.2: Equip new weapons and defeat the alien */
+
+    def crushPos2(pos: Pos): State[Level, Long] =
+      for {
+        _  <- modify((board composeLens matrix).modify(_.updated(pos, None)))
+        _  <- modify(currentScore.modify(_ + 5))
+        cs <- gets(currentScore.get)
+      } yield cs
+
+    def crushPos3(pos: Pos): State[Level, Long] =
+      for {
+        _  <- (board composeLens matrix).mod(_.updated(pos, None))
+        cs <- currentScore.modo(_ + 5)
+      } yield cs
+
+    def crushPos4(pos: Pos): State[Level, Long] =
+      (board composeLens matrix).mod(_.updated(pos, None)) >>
+      currentScore.modo(_ + 5)
+  }
+
+  // Alien 3: Optional Antlion
+  object Alien3 {
+
+    import Game._, Level._
+
+    // Given a `Game` (instead of a `Level`) get and modify the current score.
+
+    /* 3.1: Explore the area and locate the alien */
+
+    def getScore: State[Game, Option[Long]] =
+      gets(gm => level.get(gm).map(currentScore.get))
+
+    def modifyScore(f: Long => Long): State[Game, Unit] =
+      level.mod_(_.map(currentScore.modify(f)))
+
+    /* 3.2: Equip new weapons and defeat the alien */
+
+    import monocle.std.option.some
+
+    def getScore2: State[Game, Option[Long]] =
+      (level composePrism some composeLens currentScore).extract
+
+    def modifyScore2(f: Long => Long): State[Game, Unit] =
+      (level composePrism some composeLens currentScore).mod_(f)
+  }
+
+  // Alien 4: Multiple Fast Zombies
+  object Alien4 {
+
+    import Game._, Level._, Board._
+    import monocle.std.option.some
+
+    // Crush a particular board column
+
+    /* 4.1: Explore the area and locate the alien */
+
+    val op: Optional[Game, CandyMatrix] =
+      level composePrism some composeLens board composeLens matrix
+
+    def crushColumn(j: Int): State[Game, Unit] =
+      op.mod_(_.map {
+        case (p@Pos(_, j2), _) if j == j2 => (p, None)
+        case x => x
+      })
+
+    /* 4.2: Equip new weapons and defeat the alien */
+
+    import monocle.function.FilterIndex.filterIndex
+
+    def crushColumn2(j: Int): State[Game, Unit] =
+      (op composeTraversal filterIndex((p: Pos) => p.j == j)).assign_(None)
+  }
+
   def play: State[Game, Boolean] =
     for {
       ok <- (isIdle |@| nonZeroUps)(_ && _)
