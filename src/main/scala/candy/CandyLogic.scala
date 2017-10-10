@@ -312,12 +312,12 @@ object CandyLogic {
         case Some(VerStriped(_)) => List((Up, p.j))
         case _ => List.empty
       }))
+      _ <- tr.mod(_ => _ => None)
       _ <- ps.traverse {
-        case (Up, i) => crushLine(i)
-        case (Down, j) => crushColumn(j)
+        case (Up, i) => crushColumn(i)
+        case (Left, j) => crushLine(j)
         case _ => 0.point[State[Game, ?]]
       }
-      _ <- tr.mod(_ => _ => None)
       n <- gets(tr.length) >>! score
     } yield n
 
