@@ -33,17 +33,21 @@ object Alien1 {
 
   /* 1.1: Explore the area and locate the alien */
 
-  def getScore(lv: Level): Long =
+  def getScore: Level => Long = { lv =>
     lv.currentScore
+  }
 
-  def modifyScore(f: Long => Long)(lv: Level): Level =
+  def modifyScore(f: Long => Long): Level => Level = { lv =>
     lv.copy(currentScore = f(lv.currentScore)) // meh
+  }
 
-  def getMatrix(lv: Level): CandyMatrix =
+  def getMatrix: Level => CandyMatrix = { lv =>
     lv.board.matrix
+  }
 
-  def modifyMatrix(f: CandyMatrix => CandyMatrix)(lv: Level): Level =
+  def modifyMatrix(f: CandyMatrix => CandyMatrix): Level => Level = { lv =>
     lv.copy(board = lv.board.copy(matrix = f(lv.board.matrix))) // ugly
+  }
 
   /* 1.2: Equip new weapons and defeat the alien */
 

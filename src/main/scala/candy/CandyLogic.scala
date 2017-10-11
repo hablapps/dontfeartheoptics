@@ -23,10 +23,10 @@ object CandyLogic {
 
     /* 2.1: Explore the area and locate the alien */
 
-    def crushPos(pos: Pos)(lv: Level): (Level, Long) = {
-      val lv2 = (board composeLens matrix).modify(_.updated(pos, None))(lv)
-      val lv3 = currentScore.modify(_ + 5)(lv)
-      (lv3, currentScore.get(lv3))
+    def crushPos(pos: Pos): Level => (Level, Long) = { lv0 =>
+      val lv1 = (board composeLens matrix).modify(_.updated(pos, None))(lv0)
+      val lv2 = currentScore.modify(_ + 5)(lv1)
+      (lv2, currentScore.get(lv2))
     }
 
     /* 2.2: Equip new weapons and defeat the alien */
