@@ -24,7 +24,7 @@ import CandyUtils._
   height: Int,
   width: Int,
   rng: RNG,
-  matrix: Map[Pos, Option[Candy]])
+  matrix: CandyMatrix)
 
 // Alien 1: Nested Class Headcrab
 object Alien1 {
@@ -94,7 +94,7 @@ object Board {
     RNG.simple(0),
     cartesian(height, width)
       .map(ia => Pos(ia._1, ia._2))
-      .foldRight[Map[Pos, Option[Candy]]](Map.empty) { (p, m) =>
+      .foldRight[CandyMatrix](Map.empty) { (p, m) =>
         m + (p -> None)
       })
 }

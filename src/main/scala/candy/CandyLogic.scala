@@ -31,22 +31,31 @@ object CandyLogic {
 
     /* 2.2: Equip new weapons and defeat the alien */
 
-    def crushPos2(pos: Pos): State[Level, Long] =
-      for {
-        _  <- modify((board composeLens matrix).modify(_.updated(pos, None)))
-        _  <- modify(currentScore.modify(_ + 5))
-        cs <- gets(currentScore.get)
-      } yield cs
+    def crushPos2(pos: Pos): Level => (Level , Long) = { lv0 =>
+      val (lv1, _) = State[Level, Unit] { s =>
+        ((board composeLens matrix).modify(_.updated(pos, None))(s), ())
+      }.run(lv0)
+      State[Level, Long] { s =>
+        val nlv = currentScore.modify(_ + 5)(s)
+        (nlv, currentScore.get(nlv))
+      }.run(lv1)
+    }
 
-    def crushPos3(pos: Pos): State[Level, Long] =
-      for {
-        _  <- (board composeLens matrix).mod(_.updated(pos, None))
-        cs <- currentScore.modo(_ + 5)
-      } yield cs
+    implicit def monadState[S]: Monad[State[S, ?]] = ???
+
+    def crushPos3(pos: Pos): State[Level, Long] = {
+      State[Level, Unit] { s =>
+        ((board composeLens matrix).modify(_.updated(pos, None))(s), ())
+      } >>
+      State[Level, Long] { s =>
+        val nlv = currentScore.modify(_ + 5)(s)
+        (nlv, currentScore.get(nlv))
+      }
+    }
 
     def crushPos4(pos: Pos): State[Level, Long] =
       (board composeLens matrix).mod(_.updated(pos, None)) >>
-      currentScore.modo(_ + 5)
+      currentScore.mod(_ + 5)
   }
 
   // Alien 3: Optional Antlion
@@ -59,7 +68,7 @@ object CandyLogic {
     /* 3.1: Explore the area and locate the alien */
 
     def getScore: State[Game, Option[Long]] =
-      gets(gm => level.get(gm).map(currentScore.get))
+      level.extract.map(_.map(currentScore.get))
 
     def modifyScore(f: Long => Long): State[Game, Unit] =
       level.mod_(_.map(currentScore.modify(f)))
@@ -96,9 +105,12 @@ object CandyLogic {
 
     /* 4.2: Equip new weapons and defeat the alien */
 
-    import monocle.function.FilterIndex.filterIndex
+    import monocle.function.FilterIndex.{ filterIndex, mapFilterIndex }
 
     def crushColumn2(j: Int): State[Game, Unit] =
+      op.mod_(filterIndex[CandyMatrix, Pos, Option[Candy]]((p: Pos) => p.j == j).set(None))
+
+    def crushColumn3(j: Int): State[Game, Unit] =
       (op composeTraversal filterIndex((p: Pos) => p.j == j)).assign_(None)
   }
 

@@ -38,7 +38,7 @@ object CandyOptics {
   def rngOp: Optional[Game, RNG] =
     boardOp ^|-> Board.rng
 
-  def matrixOp: Optional[Game, Map[Pos, Option[Candy]]] =
+  def matrixOp: Optional[Game, CandyMatrix] =
     boardOp ^|-> Board.matrix
 
   def matrixITr: ITraversal[Pos, Game, Option[Candy]] =
