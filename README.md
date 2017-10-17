@@ -10,7 +10,7 @@ Install [JVM](https://java.com/en/download/) and
 following orders:
 
 ```bash
-$ git clone https://github.com/hablapps/dontfeartheoptics
+$ git clone https://github.com/hablapps/dontfeartheoptics.git
 $ cd dontfeartheoptics
 $ sbt compile
 ```
