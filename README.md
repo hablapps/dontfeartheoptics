@@ -12,8 +12,8 @@ following orders:
 ```bash
 $ git clone https://github.com/hablapps/dontfeartheoptics.git
 $ cd dontfeartheoptics
-$ sbt compile
+$ ./sbt compile
 ```
 
-This could take several minutes, so we recommend you to follow the previous
+This could take up to several minutes, so we recommend you to follow the
 steps before attending the workshop. Thank you!
