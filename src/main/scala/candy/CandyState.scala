@@ -33,46 +33,31 @@ object Alien1 {
 
   /* 1.1: Explore the area and locate the alien */
 
-  def getScore: Level => Long = { lv =>
-    lv.currentScore
-  }
+  def getScore: Level => Long = ???
 
-  def modifyScore(f: Long => Long): Level => Level = { lv =>
-    lv.copy(currentScore = f(lv.currentScore)) // meh
-  }
+  def modifyScore(f: Long => Long): Level => Level = ???
 
-  def getMatrix: Level => CandyMatrix = { lv =>
-    lv.board.matrix
-  }
+  def getMatrix: Level => CandyMatrix = ???
 
-  def modifyMatrix(f: CandyMatrix => CandyMatrix): Level => Level = { lv =>
-    lv.copy(board = lv.board.copy(matrix = f(lv.board.matrix))) // ugly
-  }
+  def modifyMatrix(f: CandyMatrix => CandyMatrix): Level => Level = ???
 
   /* 1.2: Equip new weapons and defeat the alien */
 
-  val _currentScore: Lens[Level, Long] =
-    Lens[Level, Long](_.currentScore)(cs => _.copy(currentScore = cs))
+  val _currentScore: Lens[Level, Long] = ???
 
-  val _board: Lens[Level, Board] =
-    Lens[Level, Board](_.board)(b => _.copy(board = b))
+  val _board: Lens[Level, Board] = ???
 
-  val _matrix: Lens[Board, CandyMatrix] =
-    Lens[Board, CandyMatrix](_.matrix)(mx => _.copy(matrix = mx))
+  val _matrix: Lens[Board, CandyMatrix] = ???
 
   import Level._, Board._
 
-  def getScore2: Level => Long =
-    currentScore.get
+  def getScore2: Level => Long = ???
 
-  def modifyScore2(f: Long => Long): Level => Level =
-    currentScore.modify(f)
+  def modifyScore2(f: Long => Long): Level => Level = ???
 
-  def getMatrix2: Level => CandyMatrix =
-    (board composeLens matrix).get
+  def getMatrix2: Level => CandyMatrix = ???
 
-  def modifyMatrix2(f: CandyMatrix => CandyMatrix): Level => Level =
-    (board composeLens matrix).modify(f)
+  def modifyMatrix2(f: CandyMatrix => CandyMatrix): Level => Level = ???
 }
 
 object Level {

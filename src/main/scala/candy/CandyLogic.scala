@@ -23,39 +23,15 @@ object CandyLogic {
 
     /* 2.1: Explore the area and locate the alien */
 
-    def crushPos(pos: Pos): Level => (Level, Long) = { lv0 =>
-      val lv1 = (board composeLens matrix).modify(_.updated(pos, None))(lv0)
-      val lv2 = currentScore.modify(_ + 5)(lv1)
-      (lv2, currentScore.get(lv2))
-    }
+    def crushPos(pos: Pos): Level => (Level, Long) = ???
 
     /* 2.2: Equip new weapons and defeat the alien */
 
-    def crushPos2(pos: Pos): Level => (Level , Long) = { lv0 =>
-      val (lv1, _) = State[Level, Unit] { s =>
-        ((board composeLens matrix).modify(_.updated(pos, None))(s), ())
-      }.run(lv0)
-      State[Level, Long] { s =>
-        val nlv = currentScore.modify(_ + 5)(s)
-        (nlv, currentScore.get(nlv))
-      }.run(lv1)
-    }
+    def crushPos2(pos: Pos): Level => (Level , Long) = ???
 
-    implicit def monadState[S]: Monad[State[S, ?]] = ???
+    def crushPos3(pos: Pos): State[Level, Long] = ???
 
-    def crushPos3(pos: Pos): State[Level, Long] = {
-      State[Level, Unit] { s =>
-        ((board composeLens matrix).modify(_.updated(pos, None))(s), ())
-      } >>
-      State[Level, Long] { s =>
-        val nlv = currentScore.modify(_ + 5)(s)
-        (nlv, currentScore.get(nlv))
-      }
-    }
-
-    def crushPos4(pos: Pos): State[Level, Long] =
-      (board composeLens matrix).mod(_.updated(pos, None)) >>
-      currentScore.mod(_ + 5)
+    def crushPos4(pos: Pos): State[Level, Long] = ???
   }
 
   // Alien 3: Optional Antlion
@@ -67,21 +43,17 @@ object CandyLogic {
 
     /* 3.1: Explore the area and locate the alien */
 
-    def getScore: State[Game, Option[Long]] =
-      level.extract.map(_.map(currentScore.get))
+    def getScore: State[Game, Option[Long]] = ???
 
-    def modifyScore(f: Long => Long): State[Game, Unit] =
-      level.mod_(_.map(currentScore.modify(f)))
+    def modifyScore(f: Long => Long): State[Game, Unit] = ???
 
     /* 3.2: Equip new weapons and defeat the alien */
 
     import monocle.std.option.some
 
-    def getScore2: State[Game, Option[Long]] =
-      (level composePrism some composeLens currentScore).extract
+    def getScore2: State[Game, Option[Long]] = ???
 
-    def modifyScore2(f: Long => Long): State[Game, Unit] =
-      (level composePrism some composeLens currentScore).mod_(f)
+    def modifyScore2(f: Long => Long): State[Game, Unit] = ???
   }
 
   // Alien 4: Multiple Fast Zombies
@@ -97,21 +69,15 @@ object CandyLogic {
     val op: Optional[Game, CandyMatrix] =
       level composePrism some composeLens board composeLens matrix
 
-    def crushColumn(j: Int): State[Game, Unit] =
-      op.mod_(_.map {
-        case (p@Pos(_, j2), _) if j == j2 => (p, None)
-        case x => x
-      })
+    def crushColumn(j: Int): State[Game, Unit] = ???
 
     /* 4.2: Equip new weapons and defeat the alien */
 
     import monocle.function.FilterIndex.{ filterIndex, mapFilterIndex }
 
-    def crushColumn2(j: Int): State[Game, Unit] =
-      op.mod_(filterIndex[CandyMatrix, Pos, Option[Candy]]((p: Pos) => p.j == j).set(None))
+    def crushColumn2(j: Int): State[Game, Unit] = ???
 
-    def crushColumn3(j: Int): State[Game, Unit] =
-      (op composeTraversal filterIndex((p: Pos) => p.j == j)).assign_(None)
+    def crushColumn3(j: Int): State[Game, Unit] = ???
   }
 
   def play: State[Game, Boolean] =
