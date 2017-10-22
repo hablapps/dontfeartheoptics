@@ -49,6 +49,10 @@ object CandyLogic {
 
     /* 3.2: Equip new weapons and defeat the alien */
 
+    import monocle.Prism
+
+    def mySome[A]: Prism[Option[A], A] = ???
+
     import monocle.std.option.some
 
     def getScore2: State[Game, Option[Long]] = ???
