@@ -29,11 +29,13 @@ import CandyUtils._
 // Alien 1: Nested Class Headcrab
 object Alien1 {
 
-  // Given a level: get/modify its current score & matrix
+  // PROBLEM: Given a level: get/modify its current score & matrix
 
   /* 1.1: Explore the area and locate the alien */
 
-  def getScore: Level => Long = ???
+  def getScore: Level => Long = { lv =>
+    ???
+  }
 
   def modifyScore(f: Long => Long): Level => Level = ???
 
@@ -43,17 +45,25 @@ object Alien1 {
 
   /* 1.2: Equip new weapons and defeat the alien */
 
-  val _currentScore: Lens[Level, Long] = ???
+  // Implement these lenses, that focus on particular case class fields.
+
+  val _currentScore: Lens[Level, Long] =
+    Lens[Level, Long](lv => ???)(cs => lv => ???)
 
   val _board: Lens[Level, Board] = ???
 
   val _matrix: Lens[Board, CandyMatrix] = ???
 
+  // Now, use auto-generated lenses to implement the previous methods.
+
   import Level._, Board._
 
-  def getScore2: Level => Long = ???
+  def getScore2: Level => Long =
+    currentScore.get
 
   def modifyScore2(f: Long => Long): Level => Level = ???
+
+  // Lenses compose!
 
   def getMatrix2: Level => CandyMatrix = ???
 

@@ -18,8 +18,8 @@ object CandyLogic {
 
     import Level._, Board._
 
-    // Crush a particular candy in the matrix, increase the score and return the
-    // resulting value.
+    // PROBLEM: Crush a particular candy in the matrix, increase the score and
+    // return the resulting value.
 
     /* 2.1: Explore the area and locate the alien */
 
@@ -27,10 +27,13 @@ object CandyLogic {
 
     /* 2.2: Equip new weapons and defeat the alien */
 
+    // Using state clumsily
     def crushPos2(pos: Pos): Level => (Level , Long) = ???
 
+    // State programs compose!
     def crushPos3(pos: Pos): State[Level, Long] = ???
 
+    // Monocle integrates with State
     def crushPos4(pos: Pos): State[Level, Long] = ???
   }
 
@@ -39,9 +42,12 @@ object CandyLogic {
 
     import Game._, Level._
 
-    // Given a `Game` (instead of a `Level`) get and modify the current score.
+    // PROBLEM: Given a `Game` (instead of a `Level`) get and modify the current
+    // score.
 
     /* 3.1: Explore the area and locate the alien */
+
+    // Can we use lenses?
 
     def getScore: State[Game, Option[Long]] = ???
 
@@ -49,9 +55,14 @@ object CandyLogic {
 
     /* 3.2: Equip new weapons and defeat the alien */
 
+    // The most typical example of a `Prism` is `some`. It focuses on the value
+    // hidden by an `Option`. We'll implement it manually.
+
     import monocle.Prism
 
     def mySome[A]: Prism[Option[A], A] = ???
+
+    // Use the standard `some` provided by Monocle to recover modularity.
 
     import monocle.std.option.some
 
@@ -66,7 +77,8 @@ object CandyLogic {
     import Game._, Level._, Board._
     import monocle.std.option.some
 
-    // Crush a particular board column
+    // PROBLEM: Crush a particular board column. You can use `op` in your
+    // implementation.
 
     /* 4.1: Explore the area and locate the alien */
 
@@ -79,8 +91,10 @@ object CandyLogic {
 
     import monocle.function.FilterIndex.{ filterIndex, mapFilterIndex }
 
+    // Using `filterIndex` clumsily
     def crushColumn2(j: Int): State[Game, Unit] = ???
 
+    // `Optional` compose with `Traversal`!
     def crushColumn3(j: Int): State[Game, Unit] = ???
   }
 
