@@ -47,6 +47,7 @@ object Alien1 {
 
   // Implement these lenses, that focus on particular case class fields.
 
+  // Lens[S, A](get: S => A)(set: A => S => S)
   val _currentScore: Lens[Level, Long] =
     Lens[Level, Long](lv => ???)(cs => lv => ???)
 

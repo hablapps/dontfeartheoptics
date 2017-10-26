@@ -27,6 +27,8 @@ object CandyLogic {
 
     /* 2.2: Equip new weapons and defeat the alien */
 
+    // State[S, A](run: S => (S, A))
+
     // Using state clumsily
     def crushPos2(pos: Pos): Level => (Level , Long) = ???
 
@@ -59,6 +61,8 @@ object CandyLogic {
     // hidden by an `Option`. We'll implement it manually.
 
     import monocle.Prism
+
+    // Prism[S, A](getOption: S => Option[A])(reverseGet: A => S)
 
     def mySome[A]: Prism[Option[A], A] = ???
 
