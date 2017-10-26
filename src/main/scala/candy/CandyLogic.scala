@@ -118,7 +118,6 @@ object CandyLogic {
       _   <- isSpecial.ifM_(specialCrush(from, dir))
       _   <- if (vld) newMove >> stabilize else undo(from, dir)
       ec  <- exitCondition
-      // XXX: great inference job, Scala!
       ok  <- ec.fold((if (vld) Ok else InvalidMove: SwitchOut).point[State[Game, ?]]) { st =>
         unloadCurrent >>
           (if (st) unlockNextLevel >> (YouWin: SwitchOut).point[State[Game, ?]]
@@ -242,24 +241,6 @@ object CandyLogic {
 
   private def generateCandy: State[Game, Option[Candy]] =
     rngOp.modo(_.nextInt._2).map(_.map(r => r.nextInt._1.toRegularCandy))
-
-  // private def populate: State[Game, Unit] =
-  //   for {
-  //     tr <- gapTrSt
-  //     ps <- gets(tr.indices)
-  //     _  <- ps.traverse_[State[Game, ?]] { p =>
-  //             generateCandy >>= (oc => candyOp(p).assign_(Option(oc)))
-  //           }
-  //   } yield ()
-
-  // import monocle.Indexable.Indexed
-  //
-  // private def populate: State[Game, Unit] =
-  //   for {
-  //     tr <- gapTrSt
-  //     g  <- gets(tr.modifyF[State[Game, ?], ? => ?](const(generateCandy))).join
-  //     _  <- put(g)
-  //   } yield ()
 
   private def populate: State[Game, Unit] =
     for {
