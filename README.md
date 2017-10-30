@@ -17,3 +17,7 @@ $ ./sbt compile
 
 This could take up to several minutes, so we recommend you to follow the
 steps before attending the workshop. Thank you!
+
+## Workshop Slides
+
+[Here](https://docs.google.com/presentation/d/1ao7IYjVTPTvHoJx8zv31SNBE0SV5weZEnau-BDibxZA/edit?usp=sharing), you can find the slides we were using through the workshop.
